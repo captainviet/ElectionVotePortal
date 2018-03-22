@@ -1,0 +1,222 @@
+<input type="button" class="submit-vote" value="Vote" id="submit-vote" />
+
+<script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+<script type="text/javascript" src="https://cdn.rawgit.com/ricmoo/aes-js/e27b99df/index.js"></script>
+<script src="http://vnntu.com/js/jsencrypt.min.js"></script>
+<script type="text/javascript">
+class AES {
+  constructor() {
+    this.round = 5
+  }
+  random8() { return Math.random().toString(36).substring(2, 10) }
+  generateKeyString() {
+    return this.random8() + this.random8()
+  }
+  convertKeyString(string) {
+    return string.split('').map(char => char.charCodeAt(0))
+  }
+  encrypt(key, message) {
+    const bytes = aesjs.utils.utf8.toBytes(message)
+    const ctr = this.getAesCounter(key)
+    const encrypted = ctr.encrypt(bytes)
+    return aesjs.utils.hex.fromBytes(encrypted)
+  }
+  getAesCounter(key) {
+    return new aesjs.ModeOfOperation.ctr(key, new aesjs.Counter(this.round))
+  }
+  decrypt(key, message) {
+    const bytes = aesjs.utils.hex.toBytes(message)
+    const ctr = this.getAesCounter(key)
+    const decrypted = ctr.decrypt(bytes)
+    return aesjs.utils.utf8.fromBytes(decrypted)
+  }
+}
+class SHA1 {
+    constructor() {
+        this.key = null
+        const request = new XMLHttpRequest()
+        request.open('GET', 'http://vnntu.com/pub/pubkey.txt',     true)
+        request.send(null)
+        request.onreadystatechange = () => {
+            if (request.readyState === 4 && request.status === 200) {
+                const type = request.getResponseHeader('Content-Type')
+                if (type.indexOf('text') !== 1) {
+                    this.key = request.responseText
+                }
+            }
+        }
+    }
+}
+const sha1 = new SHA1()
+const votes = Array.prototype.slice.call(document.getElementsByName('vote'))
+const regex = /[0-9]+/
+const cache = {}
+const idCellIndex = {}
+const thisBtnHandler = (button, cell, isSelecting) => {
+    if (isSelecting) {
+        button.classList.add('selected')
+        cell.classList.add('outlined')
+    } else {
+        button.classList.remove('selected')
+        cell.classList.remove('outlined')
+    }
+}
+const otherBtnHandler = (button, image, isSelecting) => {
+    if (isSelecting) {
+        button.disabled = true
+        button.classList.remove('hoverable')
+        image.classList.add('blurred')
+    } else {
+        if (!image.classList.contains('competitorBlurred')) {
+            button.disabled = false
+            button.classList.add('hoverable')
+        }
+        image.classList.remove('blurred')
+    }
+}
+const competitorBtnHandler = (button, image, isSelecting) => {
+    if (isSelecting) {
+        button.disabled = true
+        button.classList.remove('hoverable')
+        image.classList.add('competitorBlurred')
+    } else {
+        if (!image.classList.contains('blurred')) {
+            button.disabled = false
+            button.classList.add('hoverable')
+        }
+        image.classList.remove('competitorBlurred')
+    }
+}       
+for (let i = 0; i < votes.length; i++) {
+    const voteBtn = votes[i]
+    const name = voteBtn.value
+    const id = voteBtn.id.match(regex)[0]
+    const radioBtn = document.getElementById(`poll-answer-${id}`)
+    const pollId = radioBtn.name.match(regex)[0]
+    const cell = document.getElementById(`poll-cell-${id}`)
+    const image = document.getElementById(`poll-icon-${id}`)
+    const btnGroup = {
+        button: voteBtn,
+        radio: radioBtn,
+        image,
+        cell,
+    }
+    idCellIndex[id] = btnGroup    
+    voteBtn.onclick = () => {
+	radioBtn.checked = !radioBtn.checked
+	const selecting = radioBtn.checked
+        thisBtnHandler(voteBtn, cell, selecting)
+        const clones = cache[id].clones
+	for (i in clones) {
+            const btnGroup = clones[i]
+            const button = btnGroup.button
+            const image = btnGroup.image
+            otherBtnHandler(button, image, selecting)
+        }
+        const competitors = cache[id].competitors
+        for (i in competitors) {
+            const btnGroup = competitors[i]
+            const button = btnGroup.button
+            const image = btnGroup.image
+            competitorBtnHandler(button, image, selecting)
+        }
+    }
+}
+const nameIdsIndex = votes.reduce((agg, button) => {
+    const key = button.value
+    if (!agg[key]) {
+        agg[key] = []
+    }
+    agg[key].push(button.id.match(regex)[0])
+    return agg
+}, {})
+const idNameIndex = votes.reduce((agg, button) => {
+    agg[button.id.match(regex)[0]] = button.value
+    return agg
+}, {})
+for (id in idCellIndex) {
+    const pollId = document.getElementById(`poll-answer-${id}`).name.match(regex)[0]
+    const answers = document.getElementsByClassName(`wp-poll-cell-${pollId}`)
+    cache[id] = {}
+    cache[id].clones = nameIdsIndex[idNameIndex[id]].filter(cloneId => cloneId != id).map(id => idCellIndex[id])
+    cache[id].competitors = Array.prototype.slice.call(answers).map(answer => answer.id.match(regex)[0]).filter(candidateId => candidateId !== id).map(id => idCellIndex[id])
+}
+const submitVote = document.getElementById('submit-vote')
+const vh = {
+    gatherVote: () => {
+        const result = {}
+        for (id in idCellIndex) {
+            const button = idCellIndex[id].button
+            if (button.classList.contains('selected')) {
+                const pollId = idCellIndex[id].radio.name.match(regex)[0]
+                const pos = document.getElementsByClassName(`wp-polls-table-qn-${pollId}`)[0].children[0].innerHTML
+                result[pos] = button.value
+            }
+        }
+        return result
+    },
+    isValidVote: (vote) => {
+        const positions = Array.prototype.slice.call(document.getElementsByClassName('poll-name')).map(node => node.innerHTML)
+        const allPos = new Set()
+        for (pos in vote) {
+            if (!positions.includes(pos)) {
+                return false
+            }
+            allPos.add(pos)
+        }
+        if (allPos.size !== positions.length) {
+            return false
+        }
+        return true
+    },
+    sendVote: (vote) => {
+        const encrypt = new JSEncrypt()
+        encrypt.setPublicKey(sha1.key)
+        const name = document.getElementById('current-user-name').innerHTML
+        const yourVote = {
+            name, vote
+        }
+        const aes = new AES()
+        const aesKeyString = aes.generateKeyString()
+        const aesKey = aes.convertKeyString(aesKeyString)
+        const message = aes.encrypt(aesKey, JSON.stringify(yourVote))
+        const key = encrypt.encrypt(aesKeyString)
+        const postBody = {
+            message, key
+        }
+        console.log(postBody)
+        const params = `message=${postBody.message}&key=${key}`
+        const xhr = new XMLHttpRequest()
+        xhr.open('POST', 'https://api.mrawesome.cloud/election/vote/submit', true)
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded')
+        xhr.onload = function() {
+            console.log(this.responseText)
+        }
+        xhr.send(params)
+        console.log('Vote sent')
+    },
+}
+submitVote.onclick = () => {
+    const result = vh.gatherVote()
+    if (!vh.isValidVote(result)) {
+        swal('You haven\'t completed your vote', {
+            icon: 'warning',
+        })
+    } else {
+        swal({
+            title: 'Submit your vote for VNNTU ExCo XVIII?',
+            text: 'Vote cannot be edited once submitted',
+            icon: 'warning',
+            buttons: true,
+        }).then(willSubmit => {
+            if (willSubmit) {
+                vh.sendVote(result)
+                swal('Your vote has been recorded!', {
+                    icon: 'success',
+                })
+            }
+        })
+    }
+}
+console.log('Attached script!')
+</script>
