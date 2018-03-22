@@ -20,13 +20,11 @@
 .wp-poll-cell {
     display: inline-block;
     white-space: normal;
-    margin-right: 10px;
 }
 .wp-polls .Buttons {
-    width: 100%;
+    width: 200px;
     padding: 0.5em;
     box-shadow: none;
-    font-size: 1.25em;
     font-weight: bold;
     border: none;
     background: #AAA;
@@ -61,7 +59,7 @@
     outline: solid 10px yellow;
 }
 .wp-polls .selected {
-    background: #f0cf0c;
+    background: #f0cf0c !important;
     color: #FFF;
     transition: all 0.3s;
 }
@@ -70,12 +68,12 @@
     color: #FFF;
     transition: all 0.3s;
 }
-
 /* Question blocks */
 .wp-polls-table-question {
     width: 100%;
+    text-align: center;
     margin: auto;
-    white-space: nowrap;
+    white-space: normal;
 }
 .poll-icon-question {
     width: 200px;
@@ -83,20 +81,26 @@
     background-repeat: no-repeat;
     background-size: cover;    
 }
+.wp-polls .Buttons:hover {
+    background: #f0cf0c;
+    color: #FFF;
+    transition: all 0.3s;
+}
+.wp-polls .Buttons {
+    background: #AAA;
+    color: #FFF;
+    transition: all 0.3s;
+}
 input.input-radio {
     display: none;
 }
-.wp-polls-table-qn-20 {
-    max-width: 400px;
+.wp-polls-table-qn {
+    max-width: 205px;
 }
-.wp-polls-table-qn-21, .wp-polls-table-qn-22 {
-    max-width: 600px;
-}
-.wp-poll-cell-20 {
-    width: 50%;
-}
-.wp-poll-cell-21, .wp-poll-cell-22 {
-    width: 33.3%;
+.wp-poll-cell {
+    width: 200px;
+    display: block;
+    margin: auto;
 }
 
 /* Result blocks */
@@ -130,25 +134,43 @@ input.input-radio {
 }
 
 /* Icons */
-#poll-icon-44, #poll-icon-45 {
-    background-image: url('http://i.imgur.com/mufrgkF.png');
+/* President: #poll-icon-44, #poll-icon-45, #poll-icon-52 */
+/* VP: #poll-icon-46, #poll-icon-47, #poll-icon-50, #poll-icon-53, #poll-icon-54 */
+/* Sec: #poll-icon-48, #poll-icon-49 */
+#poll-icon-44, #poll-icon-46 {
+    background-image: url('https://i.imgur.com/CTclyPy.jpg');
 }
-#poll-icon-46, #poll-icon-47, #poll-icon-50 {
-    background-image: url('http://i.imgur.com/7RDItk0.png');
+#poll-icon-45, #poll-icon-47 {
+    background-image: url('https://i.imgur.com/ben3NpN.jpg');
 }
-#poll-icon-48, #poll-icon-49, #poll-icon-51 {
-    background-image: url('http://i.imgur.com/PU6rCxO.png');
+#poll-icon-48, #poll-icon-54 {
+    background-image: url('https://i.imgur.com/De3cBLD.jpg');
+}
+#poll-icon-49 {
+    background-image: url('https://i.imgur.com/UBJWbDs.jpg');
+}
+#poll-icon-50, #poll-icon-52 {
+    background-image: url('https://i.imgur.com/TbeEeQO.png');
+}
+#poll-icon-53 {
+    background-image: url('https://i.imgur.com/eRW5P0M.jpg');
 }
 
 /* Responsive */
-@media only screen and (max-width: 767px) {
-    .wp-polls-table-qn-20, .wp-polls-table-qn-21, .wp-polls-table-qn-22 {
-        max-width: 200px;
+@media only screen and (min-width: 768px) {
+    .wp-polls-table-qn-20, .wp-polls-table-qn-21 {
+        max-width: 615px;
+    }
+    .wp-polls-table-qn-22 {
+        max-width: 410px;
     }
     .wp-poll-cell {
-        display: block;
+        display: inline-block;
+        margin-bottom: 10px;
     }
-    .wp-poll-cell-20, .wp-poll-cell-21, .wp-poll-cell-22 {
-        width: 100%;
+}
+@media only screen and (min-width: 1200px) {
+    .wp-polls-table-qn-21 {
+        max-width: 1025px;
     }
 }

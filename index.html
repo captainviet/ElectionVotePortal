@@ -1,9 +1,61 @@
-<input type="button" class="submit-vote" value="Vote" id="submit-vote" />
+[poll id="20"]
+[poll id="21"]
+[poll id="22"]
+
+<input id="submit-vote" class="submit-vote" type="button" value="Vote" />
 
 <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
 <script type="text/javascript" src="https://cdn.rawgit.com/ricmoo/aes-js/e27b99df/index.js"></script>
 <script src="http://vnntu.com/js/jsencrypt.min.js"></script>
 <script type="text/javascript">
+const checkVote = () => {
+    const request = new XMLHttpRequest()
+    const name = document.getElementById('current-user-name').innerHTML
+    request.open('GET', 'https://api.mrawesome.cloud/election/vote/exists/' + name, true)
+    request.send(null)
+    request.onreadystatechange = () => {
+        if (request.readyState === 4 && request.status === 200) {
+            const type = request.getResponseHeader('Content-Type')
+            if (type.indexOf('text') !== 1) {
+                console.log(request.responseText)
+                switchPage(JSON.stringify(request.responseText).data)
+            }
+        }
+    }
+}
+setTimeout(() => checkVote(), 1000)
+const submitVote = document.getElementById('submit-vote')
+const switchPage = (isVoted) => {
+  if (isVoted) {
+    Array.prototype.slice.call(document.getElementsByClassName('wp-polls')).forEach(node => node.remove())
+    const entryContent = document.getElementsByClassName('entry-content')[0]
+    entryContent.childNodes[1].innerHTML = 'Your vote has been recorded'
+    submitVote.classList.add('selected')
+  } else {
+    submitVote.onclick = () => {
+        const result = vh.gatherVote()
+        if (!vh.isValidVote(result)) {
+            swal('You haven\'t completed your vote', {
+                icon: 'warning',
+            })
+        } else {
+            swal({
+                title: 'Submit your vote for VNNTU ExCo XVIII?',
+                text: 'Vote cannot be edited once submitted',
+                icon: 'warning',
+                buttons: true,
+            }).then(willSubmit => {
+                if (willSubmit) {
+                    vh.sendVote(result)
+                    swal('Your vote has been recorded!', {
+                        icon: 'success',
+                    })
+                }
+            })
+        }
+    }
+  }
+}
 class AES {
   constructor() {
     this.round = 5
@@ -101,13 +153,13 @@ for (let i = 0; i < votes.length; i++) {
         image,
         cell,
     }
-    idCellIndex[id] = btnGroup    
+    idCellIndex[id] = btnGroup
     voteBtn.onclick = () => {
-	radioBtn.checked = !radioBtn.checked
-	const selecting = radioBtn.checked
+    radioBtn.checked = !radioBtn.checked
+    const selecting = radioBtn.checked
         thisBtnHandler(voteBtn, cell, selecting)
         const clones = cache[id].clones
-	for (i in clones) {
+    for (i in clones) {
             const btnGroup = clones[i]
             const button = btnGroup.button
             const image = btnGroup.image
@@ -141,7 +193,6 @@ for (id in idCellIndex) {
     cache[id].clones = nameIdsIndex[idNameIndex[id]].filter(cloneId => cloneId != id).map(id => idCellIndex[id])
     cache[id].competitors = Array.prototype.slice.call(answers).map(answer => answer.id.match(regex)[0]).filter(candidateId => candidateId !== id).map(id => idCellIndex[id])
 }
-const submitVote = document.getElementById('submit-vote')
 const vh = {
     gatherVote: () => {
         const result = {}
@@ -150,7 +201,7 @@ const vh = {
             if (button.classList.contains('selected')) {
                 const pollId = idCellIndex[id].radio.name.match(regex)[0]
                 const pos = document.getElementsByClassName(`wp-polls-table-qn-${pollId}`)[0].children[0].innerHTML
-                result[pos] = button.value
+                result[pos] = encodeURIComponent(button.value)
             }
         }
         return result
@@ -181,42 +232,17 @@ const vh = {
         const aesKey = aes.convertKeyString(aesKeyString)
         const message = aes.encrypt(aesKey, JSON.stringify(yourVote))
         const key = encrypt.encrypt(aesKeyString)
-        const postBody = {
-            message, key
-        }
-        console.log(postBody)
-        const params = `message=${postBody.message}&key=${key}`
         const xhr = new XMLHttpRequest()
         xhr.open('POST', 'https://api.mrawesome.cloud/election/vote/submit', true)
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded')
         xhr.onload = function() {
             console.log(this.responseText)
         }
+        const encodedMessage = encodeURIComponent(message)
+        const encodedKey = encodeURIComponent(key)
+        const params = `message=${encodedMessage}&key=${encodedKey}`
         xhr.send(params)
-        console.log('Vote sent')
     },
-}
-submitVote.onclick = () => {
-    const result = vh.gatherVote()
-    if (!vh.isValidVote(result)) {
-        swal('You haven\'t completed your vote', {
-            icon: 'warning',
-        })
-    } else {
-        swal({
-            title: 'Submit your vote for VNNTU ExCo XVIII?',
-            text: 'Vote cannot be edited once submitted',
-            icon: 'warning',
-            buttons: true,
-        }).then(willSubmit => {
-            if (willSubmit) {
-                vh.sendVote(result)
-                swal('Your vote has been recorded!', {
-                    icon: 'success',
-                })
-            }
-        })
-    }
 }
 console.log('Attached script!')
 </script>
