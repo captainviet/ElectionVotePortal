@@ -1,3 +1,13 @@
+/*Special entities*/
+#voted-user-message {
+    text-align: center;
+    color: black;
+    text-transform: uppercase;
+    font-size: 4vh;
+    font-weight: bolder;
+    margin-bottom: 30px;
+}
+
 /* Page header */
 .entry-title, .entry-title a {
     text-align: center;
@@ -80,11 +90,6 @@
     height: 200px;
     background-repeat: no-repeat;
     background-size: cover;    
-}
-.wp-polls .Buttons:hover {
-    background: #f0cf0c;
-    color: #FFF;
-    transition: all 0.3s;
 }
 .wp-polls .Buttons {
     background: #AAA;

@@ -1,61 +1,12 @@
 [poll id="20"]
 [poll id="21"]
 [poll id="22"]
-
 <input id="submit-vote" class="submit-vote" type="button" value="Vote" />
-
 <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
 <script type="text/javascript" src="https://cdn.rawgit.com/ricmoo/aes-js/e27b99df/index.js"></script>
 <script src="http://vnntu.com/js/jsencrypt.min.js"></script>
 <script type="text/javascript">
-const checkVote = () => {
-    const request = new XMLHttpRequest()
-    const name = document.getElementById('current-user-name').innerHTML
-    request.open('GET', 'https://api.mrawesome.cloud/election/vote/exists/' + name, true)
-    request.send(null)
-    request.onreadystatechange = () => {
-        if (request.readyState === 4 && request.status === 200) {
-            const type = request.getResponseHeader('Content-Type')
-            if (type.indexOf('text') !== 1) {
-                console.log(request.responseText)
-                switchPage(JSON.stringify(request.responseText).data)
-            }
-        }
-    }
-}
-setTimeout(() => checkVote(), 1000)
-const submitVote = document.getElementById('submit-vote')
-const switchPage = (isVoted) => {
-  if (isVoted) {
-    Array.prototype.slice.call(document.getElementsByClassName('wp-polls')).forEach(node => node.remove())
-    const entryContent = document.getElementsByClassName('entry-content')[0]
-    entryContent.childNodes[1].innerHTML = 'Your vote has been recorded'
-    submitVote.classList.add('selected')
-  } else {
-    submitVote.onclick = () => {
-        const result = vh.gatherVote()
-        if (!vh.isValidVote(result)) {
-            swal('You haven\'t completed your vote', {
-                icon: 'warning',
-            })
-        } else {
-            swal({
-                title: 'Submit your vote for VNNTU ExCo XVIII?',
-                text: 'Vote cannot be edited once submitted',
-                icon: 'warning',
-                buttons: true,
-            }).then(willSubmit => {
-                if (willSubmit) {
-                    vh.sendVote(result)
-                    swal('Your vote has been recorded!', {
-                        icon: 'success',
-                    })
-                }
-            })
-        }
-    }
-  }
-}
+const numberRegex = /[0-9]+/
 class AES {
   constructor() {
     this.round = 5
@@ -86,130 +37,53 @@ class AES {
 class SHA1 {
     constructor() {
         this.key = null
-        const request = new XMLHttpRequest()
-        request.open('GET', 'http://vnntu.com/pub/pubkey.txt',     true)
-        request.send(null)
-        request.onreadystatechange = () => {
-            if (request.readyState === 4 && request.status === 200) {
-                const type = request.getResponseHeader('Content-Type')
-                if (type.indexOf('text') !== 1) {
-                    this.key = request.responseText
-                }
+        const url = 'http://vnntu.com/pub/pubkey.txt'
+        Request.get(url, (res) => {
+            this.key = res
+        })
+    }
+}
+class CompetitorManager {
+    constructor(votes) {
+        this.nameIdsIndex = votes.reduce((agg, button) => {
+            const key = button.value
+            if (!agg[key]) {
+                agg[key] = []
             }
-        }
+            agg[key].push(button.id.match(numberRegex)[0])
+            return agg
+        }, {})
+        this.idNameIndex = votes.reduce((agg, button) => {
+            agg[button.id.match(numberRegex)[0]] = button.value
+            return agg
+        }, {})
+    }
+    findCompetitors(id) {
+        return this.nameIdsIndex[this.idNameIndex[id]]
     }
 }
-const sha1 = new SHA1()
-const votes = Array.prototype.slice.call(document.getElementsByName('vote'))
-const regex = /[0-9]+/
-const cache = {}
-const idCellIndex = {}
-const thisBtnHandler = (button, cell, isSelecting) => {
-    if (isSelecting) {
-        button.classList.add('selected')
-        cell.classList.add('outlined')
-    } else {
-        button.classList.remove('selected')
-        cell.classList.remove('outlined')
+class VoteManager {
+    constructor(domManager) {
+        this.idCellIndex = domManager.idCellIndex
+        this.sha1 = domManager.sha1
     }
-}
-const otherBtnHandler = (button, image, isSelecting) => {
-    if (isSelecting) {
-        button.disabled = true
-        button.classList.remove('hoverable')
-        image.classList.add('blurred')
-    } else {
-        if (!image.classList.contains('competitorBlurred')) {
-            button.disabled = false
-            button.classList.add('hoverable')
-        }
-        image.classList.remove('blurred')
-    }
-}
-const competitorBtnHandler = (button, image, isSelecting) => {
-    if (isSelecting) {
-        button.disabled = true
-        button.classList.remove('hoverable')
-        image.classList.add('competitorBlurred')
-    } else {
-        if (!image.classList.contains('blurred')) {
-            button.disabled = false
-            button.classList.add('hoverable')
-        }
-        image.classList.remove('competitorBlurred')
-    }
-}       
-for (let i = 0; i < votes.length; i++) {
-    const voteBtn = votes[i]
-    const name = voteBtn.value
-    const id = voteBtn.id.match(regex)[0]
-    const radioBtn = document.getElementById(`poll-answer-${id}`)
-    const pollId = radioBtn.name.match(regex)[0]
-    const cell = document.getElementById(`poll-cell-${id}`)
-    const image = document.getElementById(`poll-icon-${id}`)
-    const btnGroup = {
-        button: voteBtn,
-        radio: radioBtn,
-        image,
-        cell,
-    }
-    idCellIndex[id] = btnGroup
-    voteBtn.onclick = () => {
-    radioBtn.checked = !radioBtn.checked
-    const selecting = radioBtn.checked
-        thisBtnHandler(voteBtn, cell, selecting)
-        const clones = cache[id].clones
-    for (i in clones) {
-            const btnGroup = clones[i]
-            const button = btnGroup.button
-            const image = btnGroup.image
-            otherBtnHandler(button, image, selecting)
-        }
-        const competitors = cache[id].competitors
-        for (i in competitors) {
-            const btnGroup = competitors[i]
-            const button = btnGroup.button
-            const image = btnGroup.image
-            competitorBtnHandler(button, image, selecting)
-        }
-    }
-}
-const nameIdsIndex = votes.reduce((agg, button) => {
-    const key = button.value
-    if (!agg[key]) {
-        agg[key] = []
-    }
-    agg[key].push(button.id.match(regex)[0])
-    return agg
-}, {})
-const idNameIndex = votes.reduce((agg, button) => {
-    agg[button.id.match(regex)[0]] = button.value
-    return agg
-}, {})
-for (id in idCellIndex) {
-    const pollId = document.getElementById(`poll-answer-${id}`).name.match(regex)[0]
-    const answers = document.getElementsByClassName(`wp-poll-cell-${pollId}`)
-    cache[id] = {}
-    cache[id].clones = nameIdsIndex[idNameIndex[id]].filter(cloneId => cloneId != id).map(id => idCellIndex[id])
-    cache[id].competitors = Array.prototype.slice.call(answers).map(answer => answer.id.match(regex)[0]).filter(candidateId => candidateId !== id).map(id => idCellIndex[id])
-}
-const vh = {
-    gatherVote: () => {
+    gatherVote() {
         const result = {}
-        for (id in idCellIndex) {
-            const button = idCellIndex[id].button
+        for (let id in this.idCellIndex) {
+            const btnGroup = this.idCellIndex[id]
+            const button = btnGroup.button
             if (button.classList.contains('selected')) {
-                const pollId = idCellIndex[id].radio.name.match(regex)[0]
+                const pollId = btnGroup.radio.name.match(numberRegex)[0]
                 const pos = document.getElementsByClassName(`wp-polls-table-qn-${pollId}`)[0].children[0].innerHTML
                 result[pos] = encodeURIComponent(button.value)
             }
         }
         return result
-    },
-    isValidVote: (vote) => {
+    }
+    isValidVote(vote) {
         const positions = Array.prototype.slice.call(document.getElementsByClassName('poll-name')).map(node => node.innerHTML)
         const allPos = new Set()
-        for (pos in vote) {
+        for (let pos in vote) {
             if (!positions.includes(pos)) {
                 return false
             }
@@ -219,10 +93,10 @@ const vh = {
             return false
         }
         return true
-    },
-    sendVote: (vote) => {
+    }
+    encryptVote(vote) {
         const encrypt = new JSEncrypt()
-        encrypt.setPublicKey(sha1.key)
+        encrypt.setPublicKey(this.sha1.key)
         const name = document.getElementById('current-user-name').innerHTML
         const yourVote = {
             name, vote
@@ -232,17 +106,203 @@ const vh = {
         const aesKey = aes.convertKeyString(aesKeyString)
         const message = aes.encrypt(aesKey, JSON.stringify(yourVote))
         const key = encrypt.encrypt(aesKeyString)
-        const xhr = new XMLHttpRequest()
-        xhr.open('POST', 'https://api.mrawesome.cloud/election/vote/submit', true)
-        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded')
-        xhr.onload = function() {
-            console.log(this.responseText)
-        }
         const encodedMessage = encodeURIComponent(message)
         const encodedKey = encodeURIComponent(key)
-        const params = `message=${encodedMessage}&key=${encodedKey}`
+        return `message=${encodedMessage}&key=${encodedKey}`
+    }
+}
+class DomManager {
+    constructor() {
+        this.sha1 = new SHA1()
+        this.cache = {}
+        this.idCellIndex = {}
+        this.votes = Array.prototype.slice.call(document.getElementsByName('vote'))
+        this.submitVote = document.getElementById('submit-vote')
+        this.entryContent = document.getElementsByClassName('entry-content')[0]
+        this.allPolls = Array.prototype.slice.call(document.getElementsByClassName('wp-polls'))
+        this.currentUserName = document.getElementById('current-user-name')
+        this.buildIdCellIndex()
+        this.buildCache()
+    }
+    buildIdCellIndex() {
+        for (let i = 0; i < this.votes.length; i++) {
+            const voteBtn = this.votes[i]
+            const name = voteBtn.value
+            const id = voteBtn.id.match(numberRegex)[0]
+            const radioBtn = document.getElementById(`poll-answer-${id}`)
+            const pollId = radioBtn.name.match(numberRegex)[0]
+            const cell = document.getElementById(`poll-cell-${id}`)
+            const image = document.getElementById(`poll-icon-${id}`)
+            const btnGroup = {
+                button: voteBtn,
+                radio: radioBtn,
+                image,
+                cell,
+            }
+            this.idCellIndex[id] = btnGroup
+            voteBtn.onclick = () => {
+                radioBtn.checked = !radioBtn.checked
+                const selecting = radioBtn.checked
+                CandidateBtnHandler.thisBtnHandler(btnGroup, selecting)
+                const clones = this.cache[id].clones
+                for (let i in clones) {
+                    CandidateBtnHandler.otherBtnHandler(clones[i], selecting)
+                }
+                const competitors = this.cache[id].competitors
+                for (let i in competitors) {
+                    CandidateBtnHandler.competitorBtnHandler(competitors[i], selecting)
+                }
+            }
+        }
+    }
+    buildCache() {
+        const competitorManager = new CompetitorManager(this.votes)
+        for (let id in this.idCellIndex) {
+            const pollId = document.getElementById(`poll-answer-${id}`).name.match(numberRegex)[0]
+            const answers = document.getElementsByClassName(`wp-poll-cell-${pollId}`)
+            const relatedVote = {
+                clones: competitorManager.findCompetitors(id).filter(cloneId => cloneId != id).map(id => this.idCellIndex[id]),
+                competitors: Array.prototype.slice.call(answers).map(answer => answer.id.match(numberRegex)[0]).filter(candidateId => candidateId !== id).map(id => this.idCellIndex[id]),
+            }
+            this.cache[id] = relatedVote
+        }
+    }
+}
+const CandidateBtnHandler = {
+    thisBtnHandler: (btnGroup, isSelecting) => {
+        const button = btnGroup.button
+        const cell = btnGroup.cell
+        if (isSelecting) {
+            button.classList.add('selected')
+            cell.classList.add('outlined')
+        } else {
+            button.classList.remove('selected')
+            cell.classList.remove('outlined')
+        }
+    },
+    otherBtnHandler: (btnGroup, isSelecting) => {
+        const button = btnGroup.button
+        const image = btnGroup.image
+        if (isSelecting) {
+            button.disabled = true
+            button.classList.remove('hoverable')
+            image.classList.add('blurred')
+        } else {
+            if (!image.classList.contains('competitorBlurred')) {
+                button.disabled = false
+                button.classList.add('hoverable')
+            }
+            image.classList.remove('blurred')
+        }
+    },
+    competitorBtnHandler: (btnGroup, isSelecting) => {
+        const button = btnGroup.button
+        const image = btnGroup.image
+        if (isSelecting) {
+            button.disabled = true
+            button.classList.remove('hoverable')
+            image.classList.add('competitorBlurred')
+        } else {
+            if (!image.classList.contains('blurred')) {
+                button.disabled = false
+                button.classList.add('hoverable')
+            }
+            image.classList.remove('competitorBlurred')
+        }
+    },
+}
+const Request = {
+    get: (url, callback) => {
+        const request = new XMLHttpRequest()
+        request.open('GET', url, true)
+        request.send(null)
+        request.onreadystatechange = () => {
+            if (request.readyState === 4 && request.status === 200) {
+                const type = request.getResponseHeader('Content-Type')
+                if (type.indexOf('text') !== 1) {
+                    callback(request.responseText)
+                }
+            }
+        }
+    },
+    post: (url, params, callback) => {
+        const xhr = new XMLHttpRequest()
+        xhr.open('POST', url, true)
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded')
+        xhr.onload = function() {
+            callback(this.responseText)
+        }
         xhr.send(params)
     },
 }
-console.log('Attached script!')
+class PageRenderer {
+    constructor(domManager) {
+        this.domManager = domManager
+    }
+    switchPage(isVoted) {
+      if (isVoted) {
+        this.domManager.allPolls.forEach(node => node.remove())
+        const userMessage = document.createElement('p')
+        userMessage.id = 'voted-user-message'
+        userMessage.innerText = 'Your vote has been recorded!'
+        const entryContent = this.domManager.entryContent
+        entryContent.append(userMessage)
+        const theChaseBtn = document.createElement('input')
+        theChaseBtn.type = 'button'
+        theChaseBtn.id = 'the-chase-redirect'
+        theChaseBtn.classList.add('submit-vote')
+        theChaseBtn.value = 'Take me to The Chase! \'18'
+        theChaseBtn.onclick = () => {
+            window.location = 'http://vnntu.com/the-chase-18'
+        }
+        entryContent.append(theChaseBtn)
+        this.domManager.submitVote.remove()
+      } else {
+        console.log('User hasn\'t voted, attaching handlers')
+        this.domManager.submitVote.onclick = () => {
+            const vh = new VoteManager(this.domManager)
+            const result = vh.gatherVote()
+            if (!vh.isValidVote(result)) {
+                swal('You haven\'t completed your vote', {
+                    icon: 'warning',
+                })
+            } else {
+                swal({
+                    title: 'Submit your vote for VNNTU ExCo XVIII?',
+                    text: 'Vote cannot be edited once submitted',
+                    icon: 'warning',
+                    buttons: true,
+                }).then(willSubmit => {
+                    if (willSubmit) {
+                        const params = vh.encryptVote(result)
+                        const url = 'https://api.mrawesome.cloud/election/vote/submit'
+                        Request.post(url, params, (res) => {
+                            console.log(res)
+                        })
+                        swal('Your vote has been recorded!', {
+                            icon: 'success',
+                        })
+                    }
+                })
+            }
+        }
+      }
+    }
+    checkVote() {
+        const name = this.domManager.currentUserName.innerHTML
+        const url = 'https://api.mrawesome.cloud/election/vote/exists/' + name
+        Request.get(url, (res) => {
+            console.log(res)
+            const isVoted = JSON.parse(res).data
+            console.log(isVoted)
+            this.switchPage(isVoted)
+        })
+    }
+}
+window.onload = function() {
+    const domManager = new DomManager()
+    const pageRenderer = new PageRenderer(domManager)
+    pageRenderer.checkVote()
+    console.log('Attached script!')
+}
 </script>
