@@ -1,5 +1,5 @@
 /*Special entities*/
-#voted-user-message {
+.entry-content #voted-user-message {
     text-align: center;
     color: black;
     text-transform: uppercase;
@@ -151,7 +151,7 @@ input.input-radio {
 #poll-icon-48, #poll-icon-54 {
     background-image: url('https://i.imgur.com/De3cBLD.jpg');
 }
-#poll-icon-49 {
+#poll-icon-49, #poll-icon-55 {
     background-image: url('https://i.imgur.com/UBJWbDs.jpg');
 }
 #poll-icon-50, #poll-icon-52 {
@@ -172,10 +172,5 @@ input.input-radio {
     .wp-poll-cell {
         display: inline-block;
         margin-bottom: 10px;
-    }
-}
-@media only screen and (min-width: 1200px) {
-    .wp-polls-table-qn-21 {
-        max-width: 1025px;
     }
 }

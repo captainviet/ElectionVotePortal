@@ -25,6 +25,9 @@ const candidates = [{
   name: 'Thai Gia Bach',
   pos: 'vic'
 }, {
+  name: 'Phan Thi Minh Ngan',
+  pos: 'vic'
+}, {
   name: 'Thai Gia Bach',
   pos: 'sec',
 }, {
