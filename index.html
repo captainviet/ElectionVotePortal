@@ -7,6 +7,7 @@
 <script src="http://vnntu.com/js/jsencrypt.min.js"></script>
 <script type="text/javascript">
 const numberRegex = /[0-9]+/
+const arrayFromCollection = (collection) => Array.prototype.slice.call(collection)
 class AES {
   constructor() {
     this.round = 5
@@ -81,7 +82,7 @@ class VoteManager {
         return result
     }
     isValidVote(vote) {
-        const positions = Array.prototype.slice.call(document.getElementsByClassName('poll-name')).map(node => node.innerHTML)
+        const positions = arrayFromCollection(document.getElementsByClassName('poll-name')).map(node => node.innerHTML)
         const allPos = new Set()
         for (let pos in vote) {
             if (!positions.includes(pos)) {
@@ -116,10 +117,10 @@ class DomManager {
         this.sha1 = new SHA1()
         this.cache = {}
         this.idCellIndex = {}
-        this.votes = Array.prototype.slice.call(document.getElementsByName('vote'))
+        this.votes = arrayFromCollection(document.getElementsByName('vote'))
         this.submitVote = document.getElementById('submit-vote')
         this.entryContent = document.getElementsByClassName('entry-content')[0]
-        this.allPolls = Array.prototype.slice.call(document.getElementsByClassName('wp-polls'))
+        this.allPolls = arrayFromCollection(document.getElementsByClassName('wp-polls'))
         this.currentUserName = document.getElementById('current-user-name')
         this.buildIdCellIndex()
         this.buildCache()
@@ -162,7 +163,7 @@ class DomManager {
             const answers = document.getElementsByClassName(`wp-poll-cell-${pollId}`)
             const relatedVote = {
                 clones: competitorManager.findCompetitors(id).filter(cloneId => cloneId != id).map(id => this.idCellIndex[id]),
-                competitors: Array.prototype.slice.call(answers).map(answer => answer.id.match(numberRegex)[0]).filter(candidateId => candidateId !== id).map(id => this.idCellIndex[id]),
+                competitors: arrayFromCollection(answers).map(answer => answer.id.match(numberRegex)[0]).filter(candidateId => candidateId !== id).map(id => this.idCellIndex[id]),
             }
             this.cache[id] = relatedVote
         }
@@ -240,12 +241,16 @@ class PageRenderer {
         this.domManager = domManager
     }
     switchPage(isVoted) {
+      const redirectLink = 'http://vnntu.com/the-chase-18'
       if (isVoted) {
         this.domManager.allPolls.forEach(node => node.remove())
+        this.domManager.submitVote.remove()
+        const entryContent = this.domManager.entryContent
+        arrayFromCollection(entryContent.getElementsByTagName('br')).forEach(node => node.remove())
+        arrayFromCollection(entryContent.getElementsByTagName('p')).filter(node => !node.id).forEach(node => node.remove())
         const userMessage = document.createElement('p')
         userMessage.id = 'voted-user-message'
         userMessage.innerText = 'Your vote has been recorded!'
-        const entryContent = this.domManager.entryContent
         entryContent.append(userMessage)
         const theChaseBtn = document.createElement('input')
         theChaseBtn.type = 'button'
@@ -253,12 +258,10 @@ class PageRenderer {
         theChaseBtn.classList.add('submit-vote')
         theChaseBtn.value = 'Take me to The Chase! \'18'
         theChaseBtn.onclick = () => {
-            window.location = 'http://vnntu.com/the-chase-18'
+            window.location = redirectLink
         }
         entryContent.append(theChaseBtn)
-        this.domManager.submitVote.remove()
       } else {
-        console.log('User hasn\'t voted, attaching handlers')
         this.domManager.submitVote.onclick = () => {
             const vh = new VoteManager(this.domManager)
             const result = vh.gatherVote()
@@ -278,6 +281,7 @@ class PageRenderer {
                         const url = 'https://api.mrawesome.cloud/election/vote/submit'
                         Request.post(url, params, (res) => {
                             console.log(res)
+                            window.location = redirectLink
                         })
                         swal('Your vote has been recorded!', {
                             icon: 'success',
