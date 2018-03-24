@@ -239,9 +239,9 @@ const Request = {
 class PageRenderer {
     constructor(domManager) {
         this.domManager = domManager
+        this.redirectLink = 'http://vnntu.com/the-chase-18'
     }
     switchPage(isVoted) {
-      const redirectLink = 'http://vnntu.com/the-chase-18'
       if (isVoted) {
         this.domManager.allPolls.forEach(node => node.remove())
         this.domManager.submitVote.remove()
@@ -258,7 +258,7 @@ class PageRenderer {
         theChaseBtn.classList.add('submit-vote')
         theChaseBtn.value = 'Take me to The Chase! \'18'
         theChaseBtn.onclick = () => {
-            window.location = redirectLink
+            window.location = this.redirectLink
         }
         entryContent.append(theChaseBtn)
       } else {
@@ -281,7 +281,7 @@ class PageRenderer {
                         const url = 'https://api.mrawesome.cloud/election/vote/submit'
                         Request.post(url, params, (res) => {
                             console.log(res)
-                            window.location = redirectLink
+                            window.location = this.redirectLink
                         })
                         swal('Your vote has been recorded!', {
                             icon: 'success',
@@ -302,11 +302,22 @@ class PageRenderer {
             this.switchPage(isVoted)
         })
     }
+    isPollExpired() {
+        const url = 'https://api.mrawesome.cloud/election/vote/submit'
+        const params = 'asdfabawefdavwd'
+        Request.post(url, params, (res) => {
+            if (res === 'Not Found') {
+                window.location = this.redirectLink
+            } else {
+                this.checkVote()
+            }
+        })
+    }
 }
 window.onload = function() {
     const domManager = new DomManager()
     const pageRenderer = new PageRenderer(domManager)
-    pageRenderer.checkVote()
+    pageRenderer.isPollExpired()
     console.log('Attached script!')
 }
 </script>
